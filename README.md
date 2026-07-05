@@ -1,62 +1,62 @@
 # background_voice
 
-Быстрое сравнение STT-движков (Vosk / Silero / faster-whisper tiny|base) на своих аудио + фоновое прослушивание микрофона.
+Quick comparison of STT engines (Vosk / Silero / faster-whisper tiny|base) on your own audio + background microphone listening. Русская версия: [`README_ru.md`](README_ru.md).
 
-## Установка
+## Setup
 
 ```bash
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
 ```
 
-Системные зависимости:
-- `ffmpeg` — декодирование любых аудио (в т.ч. кривых) для Vosk/Silero.
-- `libportaudio2` — для записи с микрофона через `sounddevice` (`sudo apt install libportaudio2` на Debian/Kali).
+System dependencies:
+- `ffmpeg` — decodes arbitrary (including broken) audio for Vosk/Silero.
+- `libportaudio2` — for microphone recording via `sounddevice` (`sudo apt install libportaudio2` on Debian/Kali).
 
-Модели:
-- **Vosk** — скачивается автоматически при первом запуске в `models/` (`ru` или `en`, см. `download_models.py`).
-- **Whisper** (`faster-whisper`) — скачивается автоматически через huggingface hub при первом запуске.
-- **Silero STT** — качается через `torch.hub` при первом запуске. Поддерживает только `en`, `de`, `es` — **русского нет**, для ru используйте vosk или whisper.
+Models:
+- **Vosk** — downloaded automatically on first run into `models/` (`ru` or `en`, see `download_models.py`).
+- **Whisper** (`faster-whisper`) — downloaded automatically via the huggingface hub on first run.
+- **Silero STT** — downloaded via `torch.hub` on first run. Only supports `en`, `de`, `es` — **no Russian**, use vosk or whisper for ru.
 
-## Транскрибация одного файла или микрофона
+## Transcribing a single file or the microphone
 
 ```bash
 ./.venv/bin/python transcribe.py --engine whisper --whisper-size tiny --lang ru --file audio.wav
 ./.venv/bin/python transcribe.py --engine vosk --lang ru --file audio.wav
 ./.venv/bin/python transcribe.py --engine silero --lang en --file audio.wav
 
-# с микрофона (Enter — старт, Enter — стоп)
+# from the microphone (Enter to start, Enter to stop)
 ./.venv/bin/python transcribe.py --engine whisper --lang ru --mic
 ```
 
-Печатает текст и, если движок отдаёт word-level таймстемпы (vosk, whisper), список слов с `start`/`end`/`conf`.
+Prints the text and, if the engine provides word-level timestamps (vosk, whisper), a list of words with `start`/`end`/`conf`.
 
-## Сравнение точности (WER/CER против твоей эталонной транскрибации)
+## Accuracy comparison (WER/CER against your reference transcript)
 
 ```bash
 ./.venv/bin/python compare.py \
   --file broken_audio.wav \
-  --reference "текст который реально был сказан" \
+  --reference "the text that was actually said" \
   --engines vosk,silero,whisper \
   --lang ru \
   --whisper-size tiny
 ```
 
-Или эталон из файла: `--reference-file reference.txt`. На выходе — таблица: время инференса, WER, CER и распознанный текст по каждому движку. Движок, который упал с ошибкой (например Silero на `ru`), просто пропускается с сообщением об ошибке — остальные всё равно посчитаются.
+Or a reference from a file: `--reference-file reference.txt`. Output is a table: inference time, WER, CER, and the recognized text for each engine. An engine that raises an error (e.g. Silero on `ru`) is simply skipped with an error message — the rest are still scored.
 
-## Фоновое прослушивание микрофона (черновой прототип для "start/end word")
+## Background microphone listening (rough prototype for "start/end word")
 
 ```bash
 ./.venv/bin/python live_listen.py --whisper-size tiny --lang ru
 ```
 
-Работает так: пишет с микрофона непрерывно, режет поток на сегменты речи простым energy-VAD (RMS-порог + гистерезис, без лишних моделей), на каждом законченном сегменте гоняет Whisper с `word_timestamps=True` и печатает слова с `start`/`end`. Пороги (`--threshold`, `--start-frames`, `--end-frames`) настраиваются под твой микрофон/шум — дефолты грубые, для продакшна лучше заменить energy-VAD на `silero-vad` (отдельная лёгкая модель именно под это), но для быстрой проверки идеи достаточно и этого.
+How it works: continuously records from the mic, chops the stream into speech segments with a simple energy-based VAD (RMS threshold + hysteresis, no extra models), runs Whisper with `word_timestamps=True` on each completed segment, and prints words with `start`/`end`. Thresholds (`--threshold`, `--start-frames`, `--end-frames`) need tuning for your mic/noise — the defaults are rough. For production, swap the energy-VAD for `silero-vad` (a small dedicated model for this), but for a quick sanity check this is enough.
 
-## Тестовые аудио
+## Test audio
 
-Сами исходные mp3 (`ru_lvl/*.mp3`, `en_lvl/*.mp3`) не лежат в репозитории — только эталонные транскрибации (`.txt`) и результаты в [`BENCHMARK.md`](BENCHMARK.md). Файлы: https://drive.google.com/drive/folders/1CwY4lNiNfFNHEV4wUJGe_2DAizI22eGB?usp=sharing
+The original mp3 source files (`ru_lvl/*.mp3`, `en_lvl/*.mp3`) aren't in the repository — only the reference transcripts (`.txt`) and results in [`BENCHMARK.md`](BENCHMARK.md). Files: https://drive.google.com/drive/folders/1CwY4lNiNfFNHEV4wUJGe_2DAizI22eGB?usp=sharing
 
-## Структура
+## Structure
 
 ```
 engines/
@@ -64,10 +64,10 @@ engines/
   vosk_engine.py
   silero_engine.py
   whisper_engine.py
-audio_utils.py    # декодирование произвольного аудио в PCM16 16kHz через ffmpeg
-download_models.py # автозагрузка vosk-моделей
-mic_capture.py      # push-to-talk запись с микрофона
-transcribe.py        # CLI: файл/микрофон -> текст (+слова)
-compare.py            # CLI: файл + эталон -> WER/CER по всем движкам
-live_listen.py         # фоновое прослушивание с сегментацией речи
+audio_utils.py    # decode arbitrary audio to PCM16 16kHz via ffmpeg
+download_models.py # auto-download vosk models
+mic_capture.py      # push-to-talk microphone recording
+transcribe.py        # CLI: file/mic -> text (+ words)
+compare.py            # CLI: file + reference -> WER/CER across all engines
+live_listen.py         # background listening with speech segmentation
 ```
