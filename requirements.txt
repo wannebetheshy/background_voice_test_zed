@@ -1,0 +1,9 @@
+vosk
+faster-whisper
+torch
+torchaudio
+omegaconf
+sounddevice
+soundfile
+numpy
+jiwer

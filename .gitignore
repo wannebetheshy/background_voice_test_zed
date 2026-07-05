@@ -1,0 +1,8 @@
+.venv/
+models/
+__pycache__/
+*.pyc
+
+# original audio sources — not committed, see README for the Drive link
+ru_lvl/*.mp3
+en_lvl/*.mp3
